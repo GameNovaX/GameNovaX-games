@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Car Racing Game</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      font-size: 20px;
+      font-family: sans-serif;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <div id="score">Score: 0</div>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+  <script>
+    let scene, camera, renderer, car, road = [], traffic = [], score = 0, lane = 0;
+    let lanes = [-2, 0, 2];
+    let speed = 0.1;
+
+    init();
+    animate();
+
+    function init() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(0, 5, 10);
+      camera.lookAt(0, 0, 0);
+
+      renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      const ambient = new THREE.AmbientLight(0xffffff, 1);
+      scene.add(ambient);
+
+      const carGeo = new THREE.BoxGeometry(1, 0.5, 2);
+      const carMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+      car = new THREE.Mesh(carGeo, carMat);
+      car.position.y = 0.25;
+      scene.add(car);
+
+      for (let i = 0; i < 30; i++) {
+        const lane = new THREE.Mesh(
+          new THREE.BoxGeometry(6, 0.1, 2),
+          new THREE.MeshStandardMaterial({ color: 0x222222 })
+        );
+        lane.position.z = -i * 2;
+        scene.add(lane);
+        road.push(lane);
+      }
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft' && lane > -1) lane--;
+        if (e.key === 'ArrowRight' && lane < 1) lane++;
+      });
+    }
+
+    function spawnTraffic() {
+      const tGeo = new THREE.BoxGeometry(1, 0.5, 2);
+      const tMat = new THREE.MeshStandardMaterial({ color: 0x0000ff });
+      const t = new THREE.Mesh(tGeo, tMat);
+      const lanePos = lanes[Math.floor(Math.random() * lanes.length)];
+      t.position.set(lanePos, 0.25, car.position.z - 30);
+      scene.add(t);
+      traffic.push(t);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      car.position.x = lanes[lane];
+      camera.position.z = car.position.z + 10;
+
+      road.forEach(l => {
+        l.position.z += speed;
+        if (l.position.z > camera.position.z + 5) {
+          l.position.z -= 60;
+        }
+      });
+
+      if (Math.random() < 0.02) spawnTraffic();
+
+      traffic.forEach((t, i) => {
+        t.position.z += speed * 2;
+        if (t.position.z > car.position.z + 2) {
+          scene.remove(t);
+          traffic.splice(i, 1);
+        }
+
+        if (
+          Math.abs(car.position.x - t.position.x) < 1 &&
+          Math.abs(car.position.z - t.position.z) < 1
+        ) {
+          alert("Game Over! Final Score: " + score);
+          window.location.reload();
+        }
+      });
+
+      score++;
+      document.getElementById('score').textContent = "Score: " + score;
+      car.position.z -= speed;
+      renderer.render(scene, camera);
+    }
+  </script>
+</body>
+</html>
